@@ -1,4 +1,4 @@
-# IntroductionToSparseModelingInR
+# Introduction To Sparse Modeling In R
 Welcome to the repository for sparse learning website
 
 Next Available Date: August 4, 2024
