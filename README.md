@@ -15,4 +15,6 @@ How to sign up: Check the box for "Short Course 6 - Introduction to Sparse Model
 
 Workshop code repository: https://github.com/apatt76/IntroductionToSparseModelingInR
 
+Post-workshop survey: https://umt.co1.qualtrics.com/jfe/form/SV_acaQ7zuqT1BvalM
+
 Note: This workshop is supported by the Modelscapes Consortium, a joint collaboration between the University of Wyoming, the University of Montana, and the University of Nevada Reno.
