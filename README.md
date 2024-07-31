@@ -13,8 +13,8 @@ Unlock the power of ecological insights in the era of big data! Massive ecologic
 
 How to sign up: Check the box for "Short Course 6 - Introduction to Sparse Modeling in R" when you register for the ESA annual meeting. If you have already registered for the meeting and want to add this short course, log into your ESA account and go to "My Participation" on your account page. Scroll down to "My upcoming events", and select "View Registration" for the ESA 2024 Annual Meeting. Next click "View Event", then scroll down to the "Program" section. Click "Add" for Short Course 6. 
 
-Workshop code repository: https://github.com/apatt76/IntroductionToSparseModelingInR
+Workshop code repository: [https://github.com/apatt76/IntroductionToSparseModelingInR](https://github.com/apatt76/IntroductionToSparseModelingInR)
 
-Post-workshop survey: https://umt.co1.qualtrics.com/jfe/form/SV_acaQ7zuqT1BvalM
+Post-workshop survey: [https://umt.co1.qualtrics.com/jfe/form/SV_acaQ7zuqT1BvalM](https://umt.co1.qualtrics.com/jfe/form/SV_acaQ7zuqT1BvalM)
 
 Note: This workshop is supported by the Modelscapes Consortium, a joint collaboration between the University of Wyoming, the University of Montana, and the University of Nevada Reno.
