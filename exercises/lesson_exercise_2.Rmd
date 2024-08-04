@@ -1,0 +1,317 @@
+---
+title: "Sparse Education Module Execise 2"
+author: "Modelscapes"
+date: "2024-07-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Sparse Education Model Exercise 2
+
+**This exercise uses dataset from Olesky et al. (2022).**
+10.1088/1748-9326/ac939c
+
+
+```{r packages, message = FALSE}
+# Load the necessary packages necessary for the exercise.
+library(tidyverse)
+library(here)
+library(susieR)
+library(glmnet)
+library(corrplot)
+library(vioplot)
+
+
+```
+
+### Load Data ###
+
+**Loading and understanding the dataset**
+
+View the dataset after loading it to see the predictor and the response variables
+The response variable is Average summer dominant wavelength value (dWL)
+
+
+```{r data}
+
+dat1 <- read.csv("C:/Users/sjimoh/OneDrive - University of Wyoming/Git Repository/modelscape_workshop/modelscape_workshop/lesson_scripts/dwl_rocky_mtn_lakes.csv")
+
+dat1 <- dat1 %>% 
+  select(-c(1:4)) #remove the first four rows in the dataset because they are categorical
+
+View(dat1) #view the dataset
+
+ls(dat1) #view the list of variables in the dataset
+
+str(dat1) #check the structure of the dataset
+
+
+```
+### Data Visualization ###
+
+This data set consists of a response variable (dWL) and several predictors that may influence lake color. We can visualize the range in wavelength value by plotting the histogram of our response variable as well as looking at how it changes with a few of the predictior variables:
+
+```{r viz data 1}
+
+# Make a histogram of the response variable, showing frequency for 
+# different values
+
+hist(dat1$dWL, xlab = 'Response variable',
+     ylab = 'Number of Observations', main = '')
+
+
+# Plot the relationship between the response variable and the various 
+# explanatory variables
+par(mfrow = c(1,2))
+plot(dat1[,2], dat1$dWL, 
+     xlab = colnames(dat1)[2],
+     ylab = 'Respons variable')
+plot(dat1[,11], dat1$dWL, 
+     xlab = colnames(dat1)[11],
+     ylab = 'Response variable')
+
+```
+
+It is probable that most of the predictor variables are correlated, making it difficult to identify the true drivers of the response variable
+
+### Calculate and visualize correlation ###
+
+```{r viz correlation}
+
+# calculate the correlation matrix  between each pair of explanatory variables
+d1 <- cor(dat1, use='complete.obs')
+
+# visualize the correlation matrix: 
+# red is negative correlation, blue is positive correlation
+# with paler colors being weaker correlations and darker colors being stronger correlations
+corrplot(d1, type = "lower", order = 'original',tl.col = 'black', 
+         tl.srt = 90, tl.cex = 0.7, method = 'color', diag = FALSE)
+
+```
+
+
+### Fitting the Linear Regression Model
+```{r linear mod}
+
+# Fit a simple linear regression model
+l_mod <- lm(dat1$dWL ~ as.matrix(dat1[, -c(1)]), data = dat1)
+
+# visualize the model estimates shown as black points
+plot(l_mod$coefficients, pch = 19, 
+     xlab = 'Explanatory Variables', 
+     ylab = 'Effect of predictors on the response variable')
+
+
+# Check the summary for more information about the linear model
+summary(l_mod)
+
+```
+
+
+### Lasso Model Fit ###
+Recall that alpha = 1 implies LASSO regularization 
+
+```{r lasso model fit}
+# use k-fold cross-validation to find the best value for lambda
+cv.model_lasso <- cv.glmnet(x = as.matrix(dat1[, -c(1)]), y = dat1$dWL, alpha = 1)
+best_lambda <- cv.model_lasso$lambda.min
+best_lambda
+
+# Visualize the output lambdas. The best lambda value(s) that minimize the error are shown by the vertical dashed lines. Note that the x-axis (lambda values) is in (natural) log space. 
+plot(cv.model_lasso)
+
+# use the selected best_lambda value to run the LASSO regression using glmnet()
+model_lasso <- glmnet(x=as.matrix(dat1[, -c(1)]), 
+                      y=dat1$dWL, alpha=1, lambda=best_lambda)
+
+```
+
+
+
+```{r diag}
+
+#Check the lasso coefficients excluding the intercept
+coef_lasso <- coef(model_lasso)[-1] 
+
+# Identify the selected predictors from the set
+selected_predictors <- which(coef_lasso != 0)
+which(coef_lasso != 0)
+
+```
+
+### Lasso Model Results
+
+
+```{r lasso result visualization}
+
+
+# look at the estimates that lasso has found for the model coefficients
+plot(coef(model_lasso)[-1],pch = 20, main = 'LASSO predictors for the response variable!')
+
+
+```
+
+
+
+### Fitting SuSiE model
+Recall that L is the maximum number of non-zero effects that can be returned in your model
+
+
+```{r fit}
+# fit the model
+model_susie <- susie(as.matrix(dat1[, -c(1)]), dat1$dWL, L = 10)
+
+```
+
+Recall that variables in the credible sets are correlated, and susie cannot determine which one should be included in the model.
+
+
+```{r diag}
+
+# examine the summary for the susie model
+summary(model_susie)
+
+# Check the susie model coefficients
+coef(model_susie)
+
+
+# examine the posterior inclusion probabilities calculated by susie
+model_susie$pip
+
+```
+
+### SuSiE Model Results
+
+
+SuSiE has its own plotting method, which shows the posterior inclusion probability of each variable in X. It's also useful to look at a plot of the coefficients themselves.
+
+```{r viz fit}
+
+susie_plot(model_susie, y="PIP")
+
+# remove the first item, as it is the intercept
+# plot the estimates from SuSiE as black points
+plot(coef(model_susie)[-1],pch = 20,ylim=c(-0.5,0.5))
+
+```
+
+
+### Compare the predictive ability of the models###
+```{r prediction}
+
+# split data into training and testing- randomly choose 1/4 data to hold out as testing data
+# randomize rows (observations)
+dataSize=length(dat1$dWL)
+randomizer=sample(1:dataSize,size=dataSize,replace=F)
+
+
+# select 3/4 of data to be included in training data
+trainX=as.matrix(dat1[, -c(1)])[randomizer[1:round(.75*dataSize)],]
+trainY=dat1$dWL[randomizer[1:round(.75*dataSize)]]
+
+
+# remaining 1/4 of data to be included in testing data
+testX=as.matrix(dat1[, -c(1)])[-randomizer[1:round(.75*dataSize)],]
+testY=dat1$dWL[-randomizer[1:round(.75*dataSize)]]
+
+
+# make the linear using the training data
+pred_model_lin=lm(trainY~trainX)
+
+
+# test the linear model using the testing data
+pred_test_lin=predict(pred_model_lin, newx=testX)
+rmse_test_lin=sqrt(mean((pred_test_lin-testY)^2))
+
+
+# make the lasso using the training data
+pred_model_lasso=glmnet(x=trainX, y=trainY, alpha=1, lambda=best_lambda)
+
+
+# test the lasso model using the testing data
+pred_test_lasso=predict(pred_model_lasso, newx=testX)
+rmse_test_lasso=sqrt(mean((pred_test_lasso-testY)^2))
+
+
+# make the susie using the training data
+pred_model_susie=susie(trainX, trainY, L=10)
+
+# test the susie model using the testing data
+pred_test_susie=predict(pred_model_susie, newx=testX)
+rmse_test_susie=sqrt(mean((pred_test_susie-testY)^2))
+
+
+
+# raw RMSE values don't tell us a ton unless they are compared between methods
+# remember higher values mean a worse performance. Which method performs the best?
+rmse_test_lin
+rmse_test_lasso
+rmse_test_susie
+
+
+
+```
+
+
+
+### Compare models in their predictive ability and coefficient recovery ###
+```{r validation}
+
+##########################
+set.seed(901284)
+
+dataSize=length(dat1$dWL)
+k=10
+
+# randomize data before subsetting
+randomizer=sample(1:dataSize,size=dataSize,replace=F)
+
+# place to save RMSE and parameter estimates across runs
+rmse_vector_linear=numeric(k) # To store RMSE for linear regression
+rmse_vector_lasso=numeric(k)  # To store RMSE for LASSO regression
+rmse_vector_susie=numeric(k)  # To store RMSE for SuSiE regression
+coef_table_linear=numeric(ncol(as.matrix(dat1[, -c(1:4)]))+1)
+coef_table_lasso=numeric(ncol(as.matrix(dat1[, -c(1:4)]))+1)
+coef_table_susie=numeric(ncol(as.matrix(dat1[, -c(1:4)]))+1)
+
+# define the subsets
+for(i in 1:k){
+  # get i'th subset and make it the testing data
+  testy=dat1$dWL[randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))]]
+  testX=as.matrix(dat1[, -c(1)])[randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))],]
+  # set other subsets (rest of the data) to training data
+  trainy=dat1$dWL[-randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))]]
+  trainX=as.matrix(dat1[, -c(1)])[-randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))],]
+  # run the model fits with the training data
+  model_train_linear <- lm(trainy~trainX)
+  model_train_lasso <- glmnet(x=trainX, y=trainy, alpha=1, lambda=best_lambda)
+  model_train_susie <- susie(trainX, trainy, L = 10)
+  # test using the testing data- use the model to predict, then calculate RMSE, and pull the parameter estimates
+  # save result and proceed
+  pred_test_linear=predict(model_train_linear, newx=testX)
+  pred_test_lasso=predict(model_train_lasso, newx=testX)
+  pred_test_susie=predict(model_train_susie, newx=testX)
+  
+  rmse_vector_linear[i]=sqrt(mean((pred_test_linear-testy)^2))
+  rmse_vector_lasso[i]=sqrt(mean((pred_test_lasso-testy)^2))
+  rmse_vector_susie[i]=sqrt(mean((pred_test_susie-testy)^2))
+  
+  coef_table_linear=rbind(coef_table_linear,coef(model_train_linear))
+  coef_table_lasso=rbind(coef_table_lasso,coef(model_train_lasso)[,1])
+  coef_table_susie=rbind(coef_table_susie,coef(model_train_susie))
+  # update table of real coefficients in the same format as the table of estimated coefficients
+}
+
+# remove row of zeros
+coef_table_linear=coef_table_linear[-1,]
+coef_table_lasso=coef_table_lasso[-1,]
+coef_table_susie=coef_table_susie[-1,]
+
+# visualize results of cross-validation- Evaluate predictive ability
+
+vioplot(rmse_vector_linear,rmse_vector_lasso,rmse_vector_susie,names = c("linear","lasso","susie"),ylab="Prediction RMSE")
+
+```
