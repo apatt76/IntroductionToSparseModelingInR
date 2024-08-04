@@ -1,0 +1,525 @@
+---
+title: "lesson_combined"
+author: "Modelscapes"
+date: "2024-04-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+### Introduction to Lasso ###
+
+LASSO, or the Least Absolute Shrinkage and Selection Operator model, is a sparse modeling method that was introduced by Tibshirani (1996). In general, LASSO and other sparse methods are useful when you have many potential predictor variables and only a few are important. These methods also excel in cases where there are a high number of predictors compared to the number of data points. Each sparse method has its own way of selecting key parameters from the 'white noise' of multiple unimportant parameters.
+
+LASSO identifies key parameter values by minimizing the residual sum of squares [RSS = equation] *plus* another shrinkage penalty term, [lambda*|sum of coefficient vector|]. This shrinkage penalty reduces all coefficient estimates towards zero, and some are set to exactly zero. The non-zero coefficients remaining are the selected parameter values.  In this process, lambda is a tuning parameter that controls the strength of the regularization. In other words, the value of lambda determines how many parameters will be set to 0: higher values of lambda result in more shrinkage and more coefficients being set exactly to zero (this is NOT in a 1:1 relationship with the value of lambda). Ideally, select a lambda that will minimize the shrinkage-penalty equation. The glmnet package has a function, 'cv.glmnet()' which we will use to find the best lambda value for our regularization and parameter selection. 
+
+**Data requirements: **
+For LASSO with glmnet, you need:
+X = a matrix of X (predictor) values, where each column represents a particular predictor and each entry in the column is a data point for that predictor. 
+y = a vector of response values
+
+**Limitations: **
+Why the glmnet package?:
+We are using the LASSO method embedded in the glmnet() package. This is one of the most popular and straightforward packages for running LASSO regression, however there are other options with slightly different implementations, notably the monomvn() package. In the next code chunk, you will load glmnet() along with the other packages used in this script. Once these packages are loaded, you can learn more about each one using the 'help' function: e.g., type and run help(glmnet) in your console, or search for glmnet in the 'help' tab in RStudio. 
+
+
+### Introduction to SuSiE ###
+
+SuSiE, short for Sum of Single Effects, is a sparse method that arose from the field of genetics, as a tool for genetic fine mapping. Genetic fine mapping is a classic sparse problem- there are a huge number of candidate single nucleotide polymorphisms (SNPs) that could possibly affect some phenotype, and only a few of them are likely to truly have an effect. In addition, many of the SNPs are correlated with each other due to genetic linkage. SuSiE is built to both find the few truly explanatory variables out of many possible explanatory variables (variable selection), and pick out sets of correlated explanatory variables among which at least one has a strong effect (group selection). 
+
+The idea behind SuSiE is to make a Bayesian method similar to traditional forward step-wise selection, a method in which variables are added to a model one-by-one based on which improves the model performance the most (often determined by change in AIC). In fact, the authors named the algorithm used to fit SuSiE the iterative Bayesian step-wise selection (IBSS) algorithm in deference to this similarity. The main difference is that single effect regressions are fit using Bayesian methods, and at each step, there is quantified uncertainty in which variable to add to the model next, essentially resulting in model averaging at each step. In addition, the use of these distributions allows variable selections in previous steps to be evaluated again at each subsequent step.
+
+Some advantages to SuSiE include its ease of use, its fast computational speed, its simple approximation algorithm compared to other exact Bayesian methods, and its ability to deal with correlated variables using group selection. Since SuSiE was created with genetics/genomics in mind, it can hand very large data sets. Some disadvantages are the possibility of the IBSS algorithm to have convergence issues with some data sets, and a lack of flexibility compared with some other Bayesian methods to deal with non-Gaussian data.
+
+**Data requirements: **
+For SuSiE with susieR(), you need:
+X = a matrix of X (predictor) values, where each column represents a particular predictor and each entry in the column is a data point for that predictor. 
+y = a vector of response values
+
+**Limitations: **
+In some cases, group selection can lead to poor estimates, due to splitting contributions among many correlated variables.
+
+
+
+```{r packages, message = FALSE}
+
+# Load packages necessary for the following script.
+library(tidyverse)
+library(here)
+library(susieR)
+library(glmnet)
+library(corrplot)
+library(vioplot)
+
+
+```
+
+### Load Data ###
+
+*This next part loads the dragon dataset.*
+In this exercise, we will walk through an example of comparing linear regression, lasso, SuSiE, to figure out what controls dragon populations. 
+
+
+```{r data}
+# make analysis reproducible by setting a seed- any random number generation will be the same, with the same seed
+set.seed(8712)
+
+# load the data
+#data1=readRDS(here("data/dragon.data.RData")) #you can use this line instead if you clone the github repository and open it as a project
+# otherwise just navigate to the downloaded data set in the popup window
+data1=readRDS(file.choose())
+
+# data naming housekeeping
+names(data1)[1]="X"
+data1$X=as.matrix(data1$X)
+
+
+```
+
+### Understand the data ###
+
+Once loaded, take a look at it in the Environment tab and note the structure. It is a *list* of 3 items, all numeric class, each with its own structure. "y" is the response variable, dragon population density and there are *100* total observations. X is a matrix of predictor variables; there are 74 possible predictors for dragon density. Each predictor variable, or column of X, has its own beta value (or slope) that tells us whether and how much that predictor affects the response variable, y. These data are linear, so their relationship is represented by this equation: 
+
+$$y = X_1*beta_1 + X_2*beta_2 + X_3* beta_3... + X_{74}*beta_{74} + error$$
+
+Of these 74 potential predictors, only a few are actually important - the rest are 'white noise'. This data structure is what makes a sparse method like LASSO or SuSIE a good choice for parameter selection: sparse methods excel at separating important parameters from the 'white noise'. 
+
+### Visualize data ###
+
+This data set consists of a response variable, the density of dragons, as well as 74 environmental and ecological variables that might be important drivers of the dragon population density. We can visualize the range in population density by plotting a histogram of our response variable as well as looking at how it changes with a few of the environmental variables:
+
+```{r viz data 1}
+
+# Make a histogram of the dragon population density, showing frequency for different ranges of population densities. Notice that population densities are shown as Z-scores, rather than true population densities. This means the original populations had their mean subtracted and were then divided by their standard deviation, in order to normalize them.
+hist(data1$y, xlab = 'Dragon Population Density',
+     ylab = 'Number of Observations', main = '')
+
+# Make some exploratory plots showing the relationship between dragon frequency and the various explanatory variables- clearly density is not very correlated with the price of firewood.
+par(mfrow = c(1,2))
+varnum1=1
+plot(data1$X[,varnum1], data1$y, 
+     xlab = colnames(data1$X)[varnum1],
+     ylab = 'Dragon Population Density')
+varnum2=10
+plot(data1$X[,varnum2], data1$y, 
+     xlab = colnames(data1$X)[varnum2],
+     ylab = 'Dragon Population Density')
+```
+
+
+Only a few of the 74 explanatory variables have meaningful effects. Because these are simulated data, we know the variables these are before we start and can see this for ourselves:
+
+```{r viz data 2}
+
+# plot the known effect sizes of each explanatory variable on dragon population density
+par(mfrow = c(1,1))
+plot(data1$beta, pch = 19, 
+     xlab = 'Explanatory Variables', 
+     ylab = 'Effect on Dragon Population Density')
+abline(h = 0)
+
+plot(data1$beta, pch = 19, 
+     xlim=c(-1,75),
+     ylim=c(-1.5,1.5),
+     xlab = 'Explanatory Variables', 
+     ylab = 'Effect on Dragon Population Density')
+abline(h = 0)
+
+text(x=which(abs(data1$beta)>0.2),y=data1$beta[which(abs(data1$beta)>0.2)],colnames(data1$X)[which(abs(data1$beta)>0.2)],srt=90)
+
+```
+
+The challenge that we face is that many of these variables are correlated with each other, so it can be difficult to select the ones that are the true drivers. 
+
+ACTIVITY 1:
+Consider which method(s) you expect to work best if highly correlated/uncorrelated variables have large effects? For strongly correlated variables, would lasso or SuSiE be the best approach? Does it matter if the correlations occur among variables with large effects, between variables with large and small effects, or among variables with small effects?
+
+```{r viz data 3}
+
+# calculate correlation matrix showing correlation between each pair of explanatory variables
+d <- cor(data1$X, use='complete.obs')
+
+# visualize the correlation matrix: 
+# red is negative correlation, blue is positive correlation
+# with paler colors being weaker correlations and darker colors being stronger correlations
+# What does this plot tell you?
+corrplot(d, type = "lower", order = 'original',tl.col = 'black', 
+         tl.srt = 90, tl.cex = 0.7, method = 'color', diag = FALSE)
+
+```
+
+### Linear Regression Model Fit
+```{r linear mod}
+
+# for comparison, try a simple linear regression model
+l_mod <- lm(data1$y ~ data1$X)
+
+# visualize the model estimates shown as black points
+plot(l_mod$coefficients, pch = 19, 
+     xlab = 'Explanatory Variables', 
+     ylab = 'Effect on Dragon Population Density',
+     main = "Linear model predictors for dragon population",
+     ylim=c(min(-0.5,coef(l_mod)[-1],data1$beta), max(0.5,coef(l_mod)[-1],data1$beta)))
+# compare to the real coefficients, shown as blue diamonds
+points(data1$beta,pch=23,col="blue")
+# the blue diamonds are so close to zero because the linear method vastly overestimates coefficients, dramatically increasing the scale
+text(x=which(abs(l_mod$coefficients)>10)-1,y=l_mod$coefficients[which(abs(l_mod$coefficients)>10)],colnames(data1$X)[which(abs(l_mod$coefficients)>10)-1]) # minus 1 to exclude intercept
+legend(2,25,legend=c("True value","Model estimated value"),col=c("blue","black"),pch=c(23,19))
+
+# examine the summary for more information about the linear model
+summary(l_mod)
+# the adjusted r-squared value is *0.7307*, which indicates that model thinks it has described the majority of the variance.
+
+# compare estimated coefficients to real values- if the model had perfect parameter recovery, the points would fall on the y=x line
+plot(data1$beta,coef(l_mod)[-1],
+     ylim=c(-1,1),
+     xlab="True beta values", 
+     ylab="Estimated beta values",
+     main="Linear method")
+abline(a=0,b=1)
+
+# the vertical "line" of points means that the model is estimating high beta values even when the true values are zero
+
+# Compare estimates for strong vs weak predictors in a boxplot
+coefLinearNoIntercept=coef(l_mod)[-1]
+strong=which(abs(data1$beta)>0)
+vioplot(abs(coefLinearNoIntercept[strong]),abs(coefLinearNoIntercept[-strong]),ylab="Absolute value of beta estimates",names=c("Strong covariates","Weak covariates"),main="Linear method")
+# Unfortunately, some of the weak predictors have unrealistic estimates 
+
+```
+
+### Lasso Model Fit ###
+
+Fitting the data for a LASSO regularization is a straightforward process. There are two steps, each using a function from the 'glmnet' package, and with alpha set to 1 (in glmnet, alpha=1 specifies LASSO regularization). First, use 'cv.glmnet()' to find the lambda_min, i.e. the lambda value that provides the lowest mean cross-validated error for your data. Once you have your lambda_min, call 'glmnet()', specifying that alpha=1 and lambda=lambda_min. In both functions, X is a table of predictor variables, with each column of X being a predictor, and y is a vector of y values. 
+
+
+ACTIVITY 2:
+What happens when you try different lambda values? Sure we show you how to choose lambda below, but as you work through the lasso analysis, consider what would happen if you used different values of lambda. How would increasing (or decreasing) lambda change the number of parameters selected, the estimates of those parameters, and the predictive ability of the model? Try to make a prediction before trying it, and then see if you were right, by trying a few different lambda values. What happens if the "best" lambda value is weird- really low or really high?
+
+```{r best lambda}
+# use k-fold cross-validation to find the best value for lambda
+cv.model_lasso <- cv.glmnet(x=data1$X, y=data1$y, alpha=1)
+best_lambda <- cv.model_lasso$lambda.min
+best_lambda 
+# Lower values of lambda mean that beta values are less penalized. If lambda is zero, you are essentially back at the linear model
+
+# Visualize the output lambdas. The best lambda value(s) that minimize the error are shown by the vertical dashed lines, which can be interpreted like confidence intervals. Note that the x-axis (lambda values) is in (natural) log space. 
+plot(cv.model_lasso)
+
+# use the selected best_lambda value to run the LASSO regression using glmnet()
+model_lasso <- glmnet(x=data1$X, y=data1$y, alpha=1, lambda=best_lambda)  #match w dataset once finalized
+
+```
+
+
+```{r run lasso}
+
+
+coef_lasso <- coef(model_lasso)[-1] 
+selected_predictors <- which(coef_lasso != 0)
+
+# Notice that many of the 74 coefficient values do not appear: this is because LASSO shrank them to 0.
+which(coef_lasso != 0)
+
+# check the deviance explained by lasso (interpret like r-squared value)
+model_lasso$dev.ratio
+# the model explained a good amount of deviance 
+
+```
+
+### Model Results
+
+
+```{r viz lasso}
+
+
+# look at the estimates that lasso has found for the beta values
+plot(coef(model_lasso)[-1],
+     pch = 20, 
+     main = 'LASSO model predictors for dragon population',
+     ylab="Effect on Dragon Population Density",
+     xlab="Explanatory variables",
+     ylim=c(min(-0.5,coef(model_lasso)[-1],data1$beta),max(0.5,coef(model_lasso)[-1],data1$beta)))
+# compare to the real coefficients, shown as blue diamonds
+points(data1$beta,pch=23,col="blue")
+text(x=which(abs(model_lasso$beta)>2)-1,y=model_lasso$beta[which(abs(model_lasso$beta)>2)],colnames(data1$X)[which(abs(model_lasso$beta)>2)])
+legend(2,-2,legend=c("True value","Model estimated value"),col=c("blue","black"),pch=c(23,19))
+
+
+# compare coefficients to real values- if the model had perfect parameter recovery, the points would fall on the y=x line
+plot(data1$beta,coef(model_lasso)[-1],
+     xlab="True beta values",
+     ylab="Estimated beta values",
+     main="Lasso method")
+abline(a=0,b=1)
+
+# Compare estimates for strong vs weak predictors
+coefLassoNoIntercept=coef(model_lasso)[-1]
+strong=which(abs(data1$beta)>0)
+vioplot(abs(coefLassoNoIntercept[strong]),abs(coefLassoNoIntercept[-strong]),ylab="Absolute value of beta estimates",names=c("Strong covariates","Weak covariates"),main="Lasso method")
+
+# Seems like lasso is doing a mostly good job with the weak covariates, though one is abnormally high
+
+
+```
+
+
+
+### SuSiE model Fit
+
+The actual fitting of the data is very simple, just call the SuSiE function. X is a table of predictor variables, with each column of X being a predictor, and y is a vector of y values. The parameter L is the maximum number of non-zero effects that you are allowing in your model- by default, L is set to either 10 or the number of variables in X, whichever is smaller. Of course, choosing your L value is a matter of judgement, but do note that L is the maximum number of non-zero effects, the number of predictor variables selected may be much smaller.
+
+ACTIVITY 3:
+What happens when you try different L values? We chose L=10 for this analysis, but are you sure that is a good choice? How would increasing (or decreasing) L change the number of parameters selected, the estimates of those parameters, and the predictive ability of the model? Try to make a prediction before trying it, and then see if you were right, by trying a few different L values. SuSiE, unlike lasso, doesn't have a built in cross validation function for selecting an L value. How could you search systematically for the correct L value?
+
+```{r run susie}
+# fit the model
+model_susie <- susie(data1$X, data1$y, L = 10)
+
+```
+
+
+
+The main results from the summary function for SuSiE are a table of variables and a table of "credible sets". Within the variable table, all selected non-zero effects are listed along with the variable's inclusion probability and which credible set the variable belongs to. The credible sets summary includes a list of credible sets, and for each one a logged Bayes factor, an average R^2 value and a minimum R^2 value, as well as a list of which variables are in the credible set. When more than one variable is in a credible set, that means that the SuSiE suggests that these variables are correlated, and cannot determine which one should be included in the model. 
+
+The coefficient function tells us about what the coefficient estimates are for our SuSiE model. Since we are using simulated data, we can compare these to the real beta values. 
+
+```{r susie summary}
+
+# examine the summary for the susie model
+summary(model_susie)
+# you can see the credible sets- result of variable selection
+
+```
+
+
+```{r susie summary2}
+
+# examine the posterior inclusion probabilities calculated by susie
+model_susie$pip
+
+# calculate the susie model r-squared values
+rsquared=cor(predict(model_susie,data1$X),data1$y)^2
+rsquared
+# r squared value is decently high
+
+```
+
+### SuSiE Model Results
+
+
+SuSiE has its own plotting method, which shows the posterior inclusion probability of each variable in X. It's also useful to look at a plot of the coefficients themselves.
+
+```{r viz susie}
+
+susie_plot(model_susie, y="PIP")
+# the color coding in this first plot shows the credible sets
+
+# remove the first item, as it is the intercept
+# plot the estimates from SuSiE as black points
+plot(coef(model_susie)[-1], 
+     pch = 20, 
+     main="SuSiE predictors for dragon population",
+     ylab="Effect on Dragon Population Density",
+     xlab="Explanatory variables",
+     ylim=c(min(-0.5,coef(model_susie)[-1],data1$beta)-0.2,max(0.5,coef(model_susie)[-1],data1$beta)))
+# compare to the real coefficients, shown as blue diamonds
+points(data1$beta,pch=23,col="blue")
+text(x=which(abs(coef(model_susie))>0.5),y=coef(model_susie)[which(abs(coef(model_susie))>0.5)]-0.1,colnames(data1$X)[which(abs(coef(model_susie))>0.5)-1])
+legend(50,0.5,legend=c("True value","Model estimated value"),col=c("blue","black"),pch=c(23,19))
+
+
+# compare coefficients to real values- if the model had perfect parameter recovery, the points would fall on the y=x line
+plot(data1$beta,coef(model_susie)[-1],
+     xlab="True beta values", 
+     ylab="Estimated beta values",
+     main="SuSiE method")
+abline(a=0,b=1)
+
+# Compare estimates for strong vs weak predictors
+coefSusieNoIntercept=coef(model_susie)[-1]
+strong=which(abs(data1$beta)>0)
+vioplot(abs(coefSusieNoIntercept[strong]),abs(coefSusieNoIntercept[-strong]),ylab="Beta estimates",names=c("Strong covariates","Weak covariates"),main="SuSiE method")
+
+
+
+```
+### Compare models in their predictive ability ###
+```{r prediction rmse}
+
+# split into training and testing- randomly choose 1/4 data to hold out as testing data
+# randomize rows (observations)
+dataSize=length(data1$y)
+randomizer=sample(1:dataSize,size=dataSize,replace=F)
+
+# select 3/4 of data to be included in training data
+trainX=data1$X[randomizer[1:round(.75*dataSize)],]
+trainY=data1$y[randomizer[1:round(.75*dataSize)]]
+
+# remaining 1/4 of data to be included in testing data
+testX=data1$X[-randomizer[1:round(.75*dataSize)],]
+testY=data1$y[-randomizer[1:round(.75*dataSize)]]
+
+# make the linear model using the training data
+pred_model_lin=lm(trainY~.,data=data.frame(trainX))
+
+# test the linear model using the testing data
+pred_test_lin=predict(pred_model_lin, newx=testX)
+rmse_test_lin=sqrt(mean((pred_test_lin-testY)^2))
+
+# make the lasso using the training data
+pred_model_lasso=glmnet(x=trainX, y=trainY, alpha=1, lambda=best_lambda)
+
+# test the lasso model using the testing data
+pred_test_lasso=predict(pred_model_lasso, newx=testX)
+rmse_test_lasso=sqrt(mean((pred_test_lasso-testY)^2))
+
+# make the susie using the training data
+pred_model_susie=susie(trainX, trainY, L=10)
+
+# test the susie model using the testing data
+pred_test_susie=predict(pred_model_susie, newx=testX)
+rmse_test_susie=sqrt(mean((pred_test_susie-testY)^2))
+
+
+
+# raw RMSE values don't tell us a ton unless they are compared between methods
+# remember higher values mean a worse performance. Which method performs the best?
+rmse_test_lin
+rmse_test_lasso
+rmse_test_susie
+
+
+
+```
+
+### Compare models in their predictive ability and coefficient recovery ###
+
+Cross validation is a tool that allows us to see how well a model is doing by splitting a data set into “training” and “testing” data sets. The training data set is used to fit the model, and then the testing data set is used to evaluate the performance of the model. We then switch it around so that different data are in the testing data set, so we are testing our model several times, and then we can see how our model is performing! Using k-folds cross validation, we split the data into k subsets, and then we use 1/k of the data for testing, and (k-1)/k for training, resulting in k tests of our data. While this technique is useful for sparse modeling approaches, it is also useful for any model fitting approach. In our k-folds cross validation, we evaluate our model using both prediction RMSE and by comparing the model's fitted effect sizes with the true effect sizes.
+
+ACTIVITY 4:
+What happens if you change the number of subsets, k, that you use for cross validation? Does randomness seem to affect the results more, or less when you increase (or decrease) k? Can k be too high? Are there other ways to do cross validation that you think could work better?
+BONUS DISCUSSION QUESTION: 
+Why are some beta values poorly recovered across all the methods, while some are more easily recovered? Is there anything we can do about this?
+
+
+```{r valid}
+
+set.seed(901284)
+
+dataSize=length(data1$y)
+k=10
+
+# randomize data before subsetting
+randomizer=sample(1:dataSize,size=dataSize,replace=F)
+
+# place to save RMSE and parameter estimates across runs
+rmse_vector_linear=numeric(k)
+rmse_vector_lasso=numeric(k)
+rmse_vector_susie=numeric(k)
+rsquared_vector_linear=numeric(k)
+rsquared_vector_lasso=numeric(k)
+rsquared_vector_susie=numeric(k)
+rsquared_vector_linear2=numeric(k)
+rsquared_vector_lasso2=numeric(k)
+rsquared_vector_susie2=numeric(k)
+coef_table_linear=numeric(ncol(data1$X)+1)
+coef_table_lasso=numeric(ncol(data1$X)+1)
+coef_table_susie=numeric(ncol(data1$X)+1)
+real_table=data1$beta
+
+# define the subsets
+for(i in 1:k){
+  # get i'th subset and make it the testing data
+  testy=data1$y[randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))]]
+  testX=data1$X[randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))],]
+  # set other subsets (rest of the data) to training data
+  trainy=data1$y[-randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))]]
+  trainX=data1$X[-randomizer[round(1+(dataSize/k*(i-1))):round(dataSize/k*(i))],]
+  # run the model fits with the training data
+  model_train_linear <- lm(trainy~.,data=data.frame(trainX))
+  model_train_lasso <- glmnet(x=trainX, y=trainy, alpha=1, lambda=best_lambda)
+  model_train_susie <- susie(trainX, trainy, L = 10)
+  # test using the testing data- use the model to predict, then calculate RMSE, and pull the parameter estimates
+  # save result and proceed
+  pred_test_linear=predict.lm(model_train_linear, newdata=data.frame(testX))
+  pred_test_lasso=predict(model_train_lasso, newx=testX)
+  pred_test_susie=predict(model_train_susie, newx=testX)
+  
+  rmse_vector_linear[i]=sqrt(mean((pred_test_linear-testy)^2))
+  rmse_vector_lasso[i]=sqrt(mean((pred_test_lasso-testy)^2))
+  rmse_vector_susie[i]=sqrt(mean((pred_test_susie-testy)^2))
+  
+  rsquared_vector_linear[i]=cor(predict(model_train_linear,as.data.frame(trainX)),trainy)^2
+  rsquared_vector_lasso[i]=cor(predict(model_train_lasso,trainX),trainy)^2
+  rsquared_vector_susie[i]=cor(predict(model_train_susie,trainX),trainy)^2
+  
+  rsquared_vector_linear2[i]=cor(predict(model_train_linear,data.frame(testX)),testy)^2
+  rsquared_vector_lasso2[i]=cor(predict(model_train_lasso,testX),testy)^2
+  rsquared_vector_susie2[i]=cor(predict(model_train_susie,testX),testy)^2
+  
+  coef_table_linear=rbind(coef_table_linear,coef(model_train_linear))
+  coef_table_lasso=rbind(coef_table_lasso,coef(model_train_lasso)[,1])
+  coef_table_susie=rbind(coef_table_susie,coef(model_train_susie))
+  # update table of real coefficients in the same format as the table of estimated coefficients
+  real_table=rbind(real_table,data1$beta)
+}
+
+# remove row of zeros
+coef_table_linear=coef_table_linear[-1,]
+coef_table_lasso=coef_table_lasso[-1,]
+coef_table_susie=coef_table_susie[-1,]
+
+# visualize results of cross-validation- Evaluate predictive ability
+
+vioplot(rmse_vector_linear,rmse_vector_lasso,rmse_vector_susie,names = c("linear","lasso","susie"),ylab="Prediction RMSE")
+
+
+
+# visualize results of cross-validation- Evaluate variable selection ability (inference)
+# The gray boxplots show the distribution of estimates, while the blue diamonds show the true values
+# If the boxplots are both small in range (precise) and on top of the blue diamonds (accurate), then the model is doing a great job
+# Why do you think certain betas are difficult to recover across methods? 
+
+boxplot(coef_table_linear[,-1],main="Linear model inference",xlab="Explanatory variables",ylab="Effect on Dragon population density") # omit the 1st column (intercept estimate)
+points(data1$beta,pch=23,col="blue")
+legend(2,50,legend=c("True value","Model estimated value boxplot"),col=c("blue","grey"),pch=c(23,15))
+
+boxplot(coef_table_lasso[,-1],main="Lasso model inference",xlab="Explanatory variables",ylab="Effect on Dragon population density") # omit the 1st column (intercept estimate)
+points(data1$beta,pch=23,col="blue")
+legend(2,-2,legend=c("True value","Model estimated value boxplot"),col=c("blue","grey"),pch=c(23,15))
+boxplot(coef_table_susie[,-1],main="SuSiE model inference",xlab="Explanatory variables",ylab="Effect on Dragon population density") # omit the 1st column (intercept estimate)
+points(data1$beta,pch=23,col="blue")
+legend(2,-0.6,legend=c("True value","Model estimated value boxplot"),col=c("blue","grey"),pch=c(23,15))
+
+
+# Though the sparse methods perform inference better than the linear model, the sparse methods are not perfect
+
+# Visualize r-squared metrics
+# in sample
+vioplot(rsquared_vector_linear,rsquared_vector_lasso,rsquared_vector_susie,names = c("linear","lasso","susie"),ylab="R-squared values (in sample)")
+# out of sample
+vioplot(rsquared_vector_linear2,rsquared_vector_lasso2,rsquared_vector_susie2,names = c("linear","lasso","susie"),ylab="R-squared values (out of sample)")
+
+
+
+# Visualize estimates
+# remove intercept estimates
+coef_table_linear1=coef_table_linear[,-1]
+coef_table_lasso1=coef_table_lasso[,-1]
+coef_table_susie1=coef_table_susie[,-1]
+
+strong=which(abs(data1$beta)>0)
+vioplot(abs(as.vector(coef_table_linear1[,strong])),abs(as.vector(coef_table_lasso1[,strong])),abs(as.vector(coef_table_susie1[,strong])),abs(as.vector(coef_table_linear1[,-strong])),abs(as.vector(coef_table_lasso1[,-strong])),abs(as.vector(coef_table_susie1[,-strong])),ylab="Beta estimates",names=c("Strong\nlinear","Strong\nlasso","Strong\nSuSiE","Weak\nlinear","Weak\nlasso","Weak\nSuSiE"),main="Parameter Estimate Comparison",ylim=c(0,5))
+
+
+
+
+```
+
+For additional information about the `glmnet` package and further example vignettes, please visit <https://glmnet.stanford.edu/index.html>.
+
+For additional information about the `susieR` package and further example vignettes, please visit <https://stephenslab.github.io/susieR/>.
