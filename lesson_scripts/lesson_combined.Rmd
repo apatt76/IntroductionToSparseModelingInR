@@ -15,23 +15,23 @@ knitr::opts_chunk$set(echo = TRUE)
 
 LASSO, or the Least Absolute Shrinkage and Selection Operator model, is a sparse modeling method that was introduced by Tibshirani (1996) to address a core challenge in regression modeling: having a model that was both accurate and interpretable, especially when there are many covariates. In general, LASSO and other sparse methods are useful when you have many covariates, but only a few have a meaningful influence on the response variable. Sparse methods also excel in cases where there are a high number of covariates compared to the number of data points. Each sparse modeling method has its own way of selecting key covariates from the 'white noise' of multiple unimportant covariates.
 
-It may be easiest to understand what LASSO does if you picture a linear model with many covariates ($X$s): 
-$$y = X_1 \beta_1 + X_2\beta_2 + X_3\beta_3... + X_{n}\beta_{n} + error$$ 
-First, LASSO minimizes the Residual Sum of Squares [$\text{RSS} = \sum_{i=1}^n (y_i - \hat{y}_i)^2$] (which measures how well your model fits the data), *then adds a shrinkage penalty term* for the $\beta$s (betas):  $\lambda \cdot \left| \sum \text{vector of $\beta$ coefficients} \right|$. This shrinkage penalty is the heart of the LASSO method: it reduces all $\beta$ coefficient estimates towards zero, and some are set to exactly zero; thus the covariates ($X$s) for the shrunken $\beta$s are also moved towards or set exactly to zero. In this shrinkage process, lambda ($\lambda$) is a tuning parameter that controls the amount of $\beta$ parameter shrinkage that occurs. In other words, the value of $\lambda$ determines how many $\beta$s will be set to 0: higher values of $\lambda$ result in more shrinkage and more $\beta$ coefficients being set exactly to zero, thus fewer $X$s selected as 'important' covariates (this IS NOT in a 1:1 relationship with the value of $\lambda$). Ideally, select a $\lambda$ that will minimize the shrinkage-penalty equation. The glmnet package has a function, 'cv.glmnet()' which we will use to find the best $\lambda$ value for our regularization and parameter selection. 
+It may be easiest to understand what LASSO does if you picture a linear model with many covariates ($X$s):
+$$y = X_1 \beta_1 + X_2\beta_2 + X_3\beta_3... + X_{n}\beta_{n} + error$$
+First, LASSO minimizes the Residual Sum of Squares [$\text{RSS} = \sum_{i=1}^n (y_i - \hat{y}_i)^2$] (which measures how well your model fits the data), *then adds a shrinkage penalty term* for the $\beta$s (betas):  $\lambda \cdot \left| \sum \text{vector of $\beta$ coefficients} \right|$. This shrinkage penalty is the heart of the LASSO method: it reduces all $\beta$ coefficient estimates towards zero, and some are set to exactly zero; thus the covariates ($X$s) for the shrunken $\beta$s are also moved towards or set exactly to zero. In this shrinkage process, lambda ($\lambda$) is a tuning parameter that controls the amount of $\beta$ parameter shrinkage that occurs. In other words, the value of $\lambda$ determines how many $\beta$s will be set to 0: higher values of $\lambda$ result in more shrinkage and more $\beta$ coefficients being set exactly to zero, thus fewer $X$s selected as 'important' covariates (this IS NOT in a 1:1 relationship with the value of $\lambda$). Ideally, select a $\lambda$ that will minimize the shrinkage-penalty equation. The glmnet package has a function, 'cv.glmnet()' which we will use to find the best $\lambda$ value for our regularization and parameter selection.
 
 **Data requirements: **
 For LASSO with glmnet, you need:  
 X = a matrix of $X$ (covariate) values, where each column represents a particular covariate and each entry in the column is a data point for that covariate  
-y = a vector of response values 
+y = a vector of response values
 
 **Limitations: **
 Why the glmnet package?:
-We are using the LASSO method embedded in the glmnet() package. This is one of the most popular and straightforward packages for running LASSO regression, however there are other options with slightly different implementations, notably the monomvn() package. In the next code chunk, you will load glmnet() along with the other packages used in this script. Once these packages are loaded, you can learn more about each one using the 'help' function: e.g., type and run help(glmnet) in your console, or search for glmnet in the 'help' tab in RStudio. 
+We are using the LASSO method embedded in the glmnet() package. This is one of the most popular and straightforward packages for running LASSO regression, however there are other options with slightly different implementations, notably the monomvn() package. In the next code chunk, you will load glmnet() along with the other packages used in this script. Once these packages are loaded, you can learn more about each one using the 'help' function: e.g., type and run help(glmnet) in your console, or search for glmnet in the 'help' tab in RStudio.
 
 
 ### Introduction to SuSiE ###
 
-SuSiE, short for Sum of Single Effects, is a sparse method that arose from the field of genetics, as a tool for genetic fine mapping. Genetic fine mapping is a classic sparse problem- there are a huge number of candidate single nucleotide polymorphisms (SNPs) that could possibly affect some phenotype, and only a few of them are likely to truly have an effect. In addition, many of the SNPs are correlated with each other due to genetic linkage. SuSiE is built to both find the few truly explanatory variables out of many possible explanatory variables (variable selection), and pick out sets of correlated explanatory variables among which at least one has a strong effect (group selection). 
+SuSiE, short for Sum of Single Effects, is a sparse method that arose from the field of genetics, as a tool for genetic fine mapping. Genetic fine mapping is a classic sparse problem- there are a huge number of candidate single nucleotide polymorphisms (SNPs) that could possibly affect some phenotype, and only a few of them are likely to truly have an effect. In addition, many of the SNPs are correlated with each other due to genetic linkage. SuSiE is built to both find the few truly explanatory variables out of many possible explanatory variables (variable selection), and pick out sets of correlated explanatory variables among which at least one has a strong effect (group selection).
 
 The idea behind SuSiE is to make a Bayesian method similar to traditional forward step-wise selection, a method in which variables are added to a model one-by-one based on which improves the model performance the most (often determined by change in AIC). In fact, the authors named the algorithm used to fit SuSiE the iterative Bayesian step-wise selection (IBSS) algorithm in deference to this similarity. The main difference is that single effect regressions are fit using Bayesian methods, and at each step, there is quantified uncertainty in which variable to add to the model next, essentially resulting in model averaging at each step. In addition, the use of these distributions allows variable selections in previous steps to be evaluated again at each subsequent step.
 
@@ -63,7 +63,7 @@ library(vioplot)
 ### Load Data ###
 
 *This next part loads the dragon dataset.*
-In this exercise, we will walk through an example of comparing three methods, linear regression, LASSO, and SuSiE, as we try to figure out what controls dragon populations. 
+In this exercise, we will walk through an example of comparing three methods, linear regression, LASSO, and SuSiE, as we try to figure out what controls dragon populations.
 
 
 ```{r data}
@@ -84,11 +84,11 @@ data1$X=as.matrix(data1$X)
 
 ### Understand the data ###
 
-Once loaded, take a look at it in the Environment tab and note the structure. It is a *list* of 3 items, all numeric class, each with its own structure. "y" is the response variable, dragon population density, and there are *100* total observations. X is a matrix of covariates; there are 74 possible covariates for dragon density. Each covariate, or column of X, has its own beta ($\beta$) coefficient value (or slope) that tells us whether and how much that covariate affects the response variable, y. These data are linear, so their relationship is represented by this equation: 
+Once loaded, take a look at it in the Environment tab and note the structure. It is a *list* of 3 items, all numeric class, each with its own structure. "y" is the response variable, dragon population density, and there are *100* total observations. X is a matrix of covariates; there are 74 possible covariates for dragon density. Each covariate, or column of X, has its own beta ($\beta$) coefficient value (or slope) that tells us whether and how much that covariate affects the response variable, y. These data are linear, so their relationship is represented by this equation:
 
 $$y = X_1 \beta_1 + X_2\beta_2 + X_3\beta_3... + X_{74}\beta_{74} + error$$
 
-Of these 74 covariates, only a few are actually important - the rest are 'white noise'. This data structure is what makes a sparse method like LASSO or SuSiE a good choice for parameter selection: sparse methods excel at separating important parameters from the 'white noise'. 
+Of these 74 covariates, only a few are actually important - the rest are 'white noise'. This data structure is what makes a sparse method like LASSO or SuSiE a good choice for parameter selection: sparse methods excel at separating important parameters from the 'white noise'.
 
 ### Visualize data ###
 
@@ -103,11 +103,11 @@ hist(data1$y, xlab = 'Dragon Population Density',
 # Make some exploratory plots showing the relationship between dragon frequency and the various explanatory variables- clearly density is not very correlated with the price of hay.
 par(mfrow = c(1,2))
 varnum1=1
-plot(data1$X[,varnum1], data1$y, 
+plot(data1$X[,varnum1], data1$y,
      xlab = colnames(data1$X)[varnum1],
      ylab = 'Dragon Population Density')
 varnum2=10
-plot(data1$X[,varnum2], data1$y, 
+plot(data1$X[,varnum2], data1$y,
      xlab = colnames(data1$X)[varnum2],
      ylab = 'Dragon Population Density')
 ```
@@ -119,15 +119,15 @@ Only a few of the 74 covariates have meaningful effects. Because these are simul
 
 # plot the known effect sizes of each explanatory variable on dragon population density
 par(mfrow = c(1,1))
-plot(data1$beta, pch = 19, 
-     xlab = 'Explanatory Variables', 
+plot(data1$beta, pch = 19,
+     xlab = 'Explanatory Variables',
      ylab = 'Effect on Dragon Population Density')
 abline(h = 0)
 
-plot(data1$beta, pch = 19, 
+plot(data1$beta, pch = 19,
      xlim=c(-1,75),
      ylim=c(-1.5,1.5),
-     xlab = 'Explanatory Variables', 
+     xlab = 'Explanatory Variables',
      ylab = 'Effect on Dragon Population Density')
 abline(h = 0)
 
@@ -135,7 +135,7 @@ text(x=which(abs(data1$beta)>0.2),y=data1$beta[which(abs(data1$beta)>0.2)],colna
 
 ```
 
-The challenge that we face is that many of these variables are correlated with each other, so it can be difficult to select the ones that are truly having strong effects from weaker but correlated covariates. 
+The challenge that we face is that many of these variables are correlated with each other, so it can be difficult to select the ones that are truly having strong effects from weaker but correlated covariates.
 
 ACTIVITY 1:
 Consider which method(s) you expect to work best if highly correlated/uncorrelated variables have large effects? For strongly correlated variables, would LASSO or SuSiE be the best approach? Does it matter if the correlations occur among variables with large effects, between variables with large and small effects, or among variables with small effects?
@@ -145,11 +145,11 @@ Consider which method(s) you expect to work best if highly correlated/uncorrelat
 # calculate correlation matrix showing correlation between each pair of explanatory variables
 d <- cor(data1$X, use='complete.obs')
 
-# visualize the correlation matrix: 
+# visualize the correlation matrix:
 # red is negative correlation, blue is positive correlation
 # with paler colors being weaker correlations and darker colors being stronger correlations
 # What does this plot tell you?
-corrplot(d, type = "lower", order = 'original',tl.col = 'black', 
+corrplot(d, type = "lower", order = 'original',tl.col = 'black',
          tl.srt = 90, tl.cex = 0.7, method = 'color', diag = FALSE)
 
 ```
@@ -161,14 +161,14 @@ corrplot(d, type = "lower", order = 'original',tl.col = 'black',
 l_mod <- lm(data1$y ~ data1$X)
 
 # visualize the model estimates shown as black points
-plot(l_mod$coefficients, pch = 19, 
-     xlab = 'Explanatory Variables', 
+plot(l_mod$coefficients, pch = 19,
+     xlab = 'Explanatory Variables',
      ylab = 'Effect on Dragon Population Density',
      main = "Linear model covariates for dragon population",
      ylim=c(min(-0.5,coef(l_mod)[-1],data1$beta), max(0.5,coef(l_mod)[-1],data1$beta)))
 # compare to the real coefficients, shown as blue diamonds
 points(data1$beta,pch=23,col="blue")
-# the blue diamonds all appear really close to zero - but look at the y-axis values! The linear method vastly overestimates coefficients, dramatically increasing the scale (y axis limits) thus making the blue diamonds appear closer to zero than they actually are. 
+# the blue diamonds all appear really close to zero - but look at the y-axis values! The linear method vastly overestimates coefficients, dramatically increasing the scale (y axis limits) thus making the blue diamonds appear closer to zero than they actually are.
 text(x=which(abs(l_mod$coefficients)>10)-1,y=l_mod$coefficients[which(abs(l_mod$coefficients)>10)],colnames(data1$X)[which(abs(l_mod$coefficients)>10)-1]) # minus 1 to exclude intercept
 legend(2,25,legend=c("True value","Model estimated value"),col=c("blue","black"),pch=c(23,19))
 
@@ -179,7 +179,7 @@ summary(l_mod)
 # compare estimated coefficients to real values- if the model had perfect parameter recovery, the points would fall on the y=x line
 plot(data1$beta,coef(l_mod)[-1],
      ylim=c(-1,1),
-     xlab="True beta values", 
+     xlab="True beta values",
      ylab="Estimated beta values",
      main="Linear method")
 abline(a=0,b=1)
@@ -190,13 +190,13 @@ abline(a=0,b=1)
 coefLinearNoIntercept=coef(l_mod)[-1]
 strong=which(abs(data1$beta)>0)
 vioplot(abs(coefLinearNoIntercept[strong]),abs(coefLinearNoIntercept[-strong]),ylab="Absolute value of beta estimates",names=c("Strong covariates","Weak covariates"),main="Linear method")
-# Unfortunately, some of the weak covariates have unrealistic estimates 
+# Unfortunately, some of the weak covariates have unrealistic estimates
 
 ```
 
 ### LASSO Model Fit ###
 
-Fitting the data for a LASSO regularization is a straightforward process. There are two steps, each using a function from the 'glmnet' package, and with alpha ($\alpha$) set to 1 (in glmnet, $\alpha$=1 specifies LASSO regularization). First, use 'cv.glmnet()' to find the lambda_min, i.e. the $\lambda$ value that provides the lowest mean cross-validated error for your data. Once you have your lambda_min, call 'glmnet()', specifying that $\alpha$=1 and $\lambda$=lambda_min. In both functions, X is a table of covariates, with each column of X being one covariate, and y is a vector of y values. 
+Fitting the data for a LASSO regularization is a straightforward process. There are two steps, each using a function from the 'glmnet' package, and with alpha ($\alpha$) set to 1 (in glmnet, $\alpha$=1 specifies LASSO regularization). First, use 'cv.glmnet()' to find the lambda_min, i.e. the $\lambda$ value that provides the lowest mean cross-validated error for your data. Once you have your lambda_min, call 'glmnet()', specifying that $\alpha$=1 and $\lambda$=lambda_min. In both functions, X is a table of covariates, with each column of X being one covariate, and y is a vector of y values.
 
 
 ACTIVITY 2:
@@ -206,10 +206,10 @@ What happens when you try different $\lambda$ values? Sure we show you how to ch
 # use k-fold cross-validation to find the best value for lambda
 cv.model_lasso <- cv.glmnet(x=data1$X, y=data1$y, alpha=1)
 best_lambda <- cv.model_lasso$lambda.min
-best_lambda 
+best_lambda
 # Lower values of lambda mean that beta values are less penalized. If lambda is zero, you are essentially back at the linear model
 
-# Visualize the output lambdas. The best lambda value(s) that minimize the error are shown by the vertical dashed lines, which can be interpreted like confidence intervals. Note that the x-axis (lambda values) is in (natural) log space. 
+# Visualize the output lambdas. The best lambda value(s) that minimize the error are shown by the vertical dashed lines, which can be interpreted like confidence intervals. Note that the x-axis (lambda values) is in (natural) log space.
 plot(cv.model_lasso)
 
 # use the selected best_lambda value to run the LASSO regression using glmnet()
@@ -221,7 +221,7 @@ model_lasso <- glmnet(x=data1$X, y=data1$y, alpha=1, lambda=best_lambda)  #match
 ```{r run lasso}
 
 
-coef_lasso <- coef(model_lasso)[-1] 
+coef_lasso <- coef(model_lasso)[-1]
 selected_covariates <- which(coef_lasso != 0)
 
 # Notice that many of the 74 coefficient values do not appear: this is because LASSO shrank them to 0.
@@ -229,7 +229,7 @@ which(coef_lasso != 0)
 
 # check the deviance explained by LASSO (interpret like r-squared value)
 model_lasso$dev.ratio
-# the model explained a good amount of deviance 
+# the model explained a good amount of deviance
 
 ```
 
@@ -241,7 +241,7 @@ model_lasso$dev.ratio
 
 # look at the estimates that LASSO has found for the beta values
 plot(coef(model_lasso)[-1],
-     pch = 20, 
+     pch = 20,
      main = 'LASSO model covariates for dragon population',
      ylab="Effect on Dragon Population Density",
      xlab="Explanatory variables",
@@ -286,9 +286,9 @@ model_susie <- susie(data1$X, data1$y, L = 10)
 
 
 
-The main results from the summary function for SuSiE are a table of variables and a table of "credible sets". Within the variable table, all selected non-zero effects are listed along with the variable's inclusion probability and which credible set the variable belongs to. The credible sets summary includes a list of credible sets, and for each one a logged Bayes factor, an average $R^2$ value and a minimum $R^2$ value, as well as a list of which variables are in the credible set. When more than one variable is in a credible set, that means that the SuSiE suggests that these variables are correlated, and cannot determine which one should be included in the model. 
+The main results from the summary function for SuSiE are a table of variables and a table of "credible sets". Within the variable table, all selected non-zero effects are listed along with the variable's inclusion probability and which credible set the variable belongs to. The credible sets summary includes a list of credible sets, and for each one a logged Bayes factor, an average $R^2$ value and a minimum $R^2$ value, as well as a list of which variables are in the credible set. When more than one variable is in a credible set, that means that the SuSiE suggests that these variables are correlated, and cannot determine which one should be included in the model.
 
-The coefficient function tells us about what the coefficient estimates are for our SuSiE model. Since we are using simulated data, we can compare these to the real beta values. 
+The coefficient function tells us about what the coefficient estimates are for our SuSiE model. Since we are using simulated data, we can compare these to the real beta values.
 
 ```{r susie summary}
 
@@ -323,8 +323,8 @@ susie_plot(model_susie, y="PIP")
 
 # remove the first item, as it is the intercept
 # plot the estimates from SuSiE as black points
-plot(coef(model_susie)[-1], 
-     pch = 20, 
+plot(coef(model_susie)[-1],
+     pch = 20,
      main="SuSiE covariates for dragon population",
      ylab="Effect on Dragon Population Density",
      xlab="Explanatory variables",
@@ -337,7 +337,7 @@ legend(50,0.5,legend=c("True value","Model estimated value"),col=c("blue","black
 
 # compare coefficients to real values- if the model had perfect parameter recovery, the points would fall on the y=x line
 plot(data1$beta,coef(model_susie)[-1],
-     xlab="True beta values", 
+     xlab="True beta values",
      ylab="Estimated beta values",
      main="SuSiE method")
 abline(a=0,b=1)
@@ -406,7 +406,7 @@ Cross validation is a tool that allows us to see how well a model is doing by sp
 ACTIVITY 4:
 What happens if you change the number of subsets, k, that you use for cross validation? Does randomness seem to affect the results more, or less, when you increase (or decrease) k? Can k be too high? Are there other ways to do cross validation that you think could work better?
 
-BONUS DISCUSSION QUESTION: 
+BONUS DISCUSSION QUESTION:
 Why are some beta values poorly recovered across all the methods, while some are more easily recovered? Is there anything we can do about this?
 
 ```{r valid}
@@ -451,19 +451,19 @@ for(i in 1:k){
   pred_test_linear=predict.lm(model_train_linear, newdata=data.frame(testX))
   pred_test_lasso=predict(model_train_lasso, newx=testX)
   pred_test_susie=predict(model_train_susie, newx=testX)
-  
+
   rmse_vector_linear[i]=sqrt(mean((pred_test_linear-testy)^2))
   rmse_vector_lasso[i]=sqrt(mean((pred_test_lasso-testy)^2))
   rmse_vector_susie[i]=sqrt(mean((pred_test_susie-testy)^2))
-  
+
   rsquared_vector_linear[i]=cor(predict(model_train_linear,as.data.frame(trainX)),trainy)^2
   rsquared_vector_lasso[i]=cor(predict(model_train_lasso,trainX),trainy)^2
   rsquared_vector_susie[i]=cor(predict(model_train_susie,trainX),trainy)^2
-  
+
   rsquared_vector_linear2[i]=cor(predict(model_train_linear,data.frame(testX)),testy)^2
   rsquared_vector_lasso2[i]=cor(predict(model_train_lasso,testX),testy)^2
   rsquared_vector_susie2[i]=cor(predict(model_train_susie,testX),testy)^2
-  
+
   coef_table_linear=rbind(coef_table_linear,coef(model_train_linear))
   coef_table_lasso=rbind(coef_table_lasso,coef(model_train_lasso)[,1])
   coef_table_susie=rbind(coef_table_susie,coef(model_train_susie))
@@ -485,7 +485,7 @@ vioplot(rmse_vector_linear,rmse_vector_lasso,rmse_vector_susie,names = c("linear
 # visualize results of cross-validation- Evaluate variable selection ability (inference)
 # The gray boxplots show the distribution of estimates, while the blue diamonds show the true values
 # If the boxplots are both small in range (precise) and on top of the blue diamonds (accurate), then the model is doing a great job
-# Why do you think certain betas are difficult to recover across methods? 
+# Why do you think certain betas are difficult to recover across methods?
 
 boxplot(coef_table_linear[,-1],main="Linear model inference",xlab="Explanatory variables",ylab="Effect on Dragon population density") # omit the 1st column (intercept estimate)
 points(data1$beta,pch=23,col="blue")
