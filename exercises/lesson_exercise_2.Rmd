@@ -31,13 +31,16 @@ library(vioplot)
 
 **Loading and understanding the dataset**
 
+The data for exercise 2 is dwl_rocky_mtn_lakes.csv
+
 View the dataset after loading it to see the predictor and the response variables
 The response variable is Average summer dominant wavelength value (dWL)
 
 
 ```{r data}
 
-dat1 <- read.csv("C:/Users/sjimoh/OneDrive - University of Wyoming/Git Repository/modelscape_workshop/modelscape_workshop/lesson_scripts/dwl_rocky_mtn_lakes.csv")
+# dat1 <- read_csv(here("exercises/dwl_rocky_mtn_lakes.csv")) # use if you cloned the GitHub repo/ maintained that file structure
+dat1 <- read_csv(file.choose())   # select the "dwl_rocky_mtn_lakes.csv" from wherever you stored it
 
 dat1 <- dat1 %>% 
   select(-c(1:4)) #remove the first four rows in the dataset because they are categorical

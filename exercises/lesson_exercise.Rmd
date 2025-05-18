@@ -42,16 +42,17 @@ library(vioplot)
 ## Please run through this first datset to see how a large lambda value may shrink all
 ## predictor coefficents to zero
 
-Exercise for dataset 1: billings_cleaned.csv
+Exercise for dataset 1: ramakers_cleaned.csv
 
 **Loading and understanding the dataset**
 
 View the dataset after loading it to see the predictor and the response variables
 
 ```{r data}
-#dat1 <- read.csv("C:/Users/sjimoh/OneDrive - University of Wyoming/Git Repository/modelscape_workshop/lesson_scripts/ramakers_cleaned.csv")
 
-dat1 <- read.csv("C:/Users/sjimoh/OneDrive - University of Wyoming/Git Repository/modelscape_workshop/lesson_scripts/dwl_rocky_mtn_lakes.csv")
+# dat1 <- read_csv(here("exercises/ramakers_cleaned.csv")) # use this if you cloned the GitHub repo and maintain the same file structure
+
+dat1 <- read_csv(file.choose()) # select the "ramakers_cleaned.csv" from wherever you stored it
 
 View(dat1) #view the dataset
 
