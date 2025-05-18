@@ -71,9 +71,9 @@ In this exercise, we will walk through an example of comparing three methods, li
 set.seed(8712)
 
 # load the data
-# data1=readRDS(here("data/dragon.data.RData")) #you can use this line instead if you clone the github repository and open it as a project
+data1=readRDS(here("data/dragon.data.RData")) #you can use this line instead if you clone the github repository and open it as a project
 # otherwise just navigate to the downloaded data set in the popup window
-data1=readRDS(file.choose())
+# data1=readRDS(file.choose())
 
 # data naming housekeeping
 names(data1)[1]="X"
@@ -189,7 +189,8 @@ abline(a=0,b=1)
 # Compare estimates for strong vs weak covariates in a boxplot
 coefLinearNoIntercept=coef(l_mod)[-1]
 strong=which(abs(data1$beta)>0)
-vioplot(abs(coefLinearNoIntercept[strong]),abs(coefLinearNoIntercept[-strong]),ylab="Absolute value of beta estimates",names=c("Strong covariates","Weak covariates"),main="Linear method")
+vioplot(abs(coefLinearNoIntercept[strong]),abs(coefLinearNoIntercept[-strong]),ylab="",names=c("Strong covariates","Weak covariates"),main="Linear method")
+mtext("Absolute value of beta estimates", side = 2, line = 2) # fixes the issue w. ylab and values overlapping
 # Unfortunately, some of the weak covariates have unrealistic estimates
 
 ```
@@ -262,7 +263,8 @@ abline(a=0,b=1)
 # Compare estimates for strong vs weak covariates
 coefLassoNoIntercept=coef(model_lasso)[-1]
 strong=which(abs(data1$beta)>0)
-vioplot(abs(coefLassoNoIntercept[strong]),abs(coefLassoNoIntercept[-strong]),ylab="Absolute value of beta estimates",names=c("Strong covariates","Weak covariates"),main="LASSO method")
+vioplot(abs(coefLassoNoIntercept[strong]),abs(coefLassoNoIntercept[-strong]),ylab="",names=c("Strong covariates","Weak covariates"),main="LASSO method")
+mtext("Absolute value of beta estimates", side = 2, line = 2) # fixes the issue w. ylab and values overlapping
 
 # Seems like LASSO is doing a mostly good job with the weak covariates, though one is abnormally high
 
@@ -345,11 +347,13 @@ abline(a=0,b=1)
 # Compare estimates for strong vs weak covariates
 coefSusieNoIntercept=coef(model_susie)[-1]
 strong=which(abs(data1$beta)>0)
-vioplot(abs(coefSusieNoIntercept[strong]),abs(coefSusieNoIntercept[-strong]),ylab="Beta estimates",names=c("Strong covariates","Weak covariates"),main="SuSiE method")
+vioplot(abs(coefSusieNoIntercept[strong]),abs(coefSusieNoIntercept[-strong]),ylab="",names=c("Strong covariates","Weak covariates"),main="SuSiE method")
+mtext("Beta estimates", side = 2, line = 2) # fixes the issue w. ylab and values overlapping
 
 
 
 ```
+
 ### Compare models in their predictive ability ###
 ```{r prediction rmse}
 
@@ -478,8 +482,8 @@ coef_table_susie=coef_table_susie[-1,]
 
 # visualize results of cross-validation- Evaluate predictive ability
 
-vioplot(rmse_vector_linear,rmse_vector_lasso,rmse_vector_susie,names = c("linear","lasso","susie"),ylab="Prediction RMSE")
-
+vioplot(rmse_vector_linear,rmse_vector_lasso,rmse_vector_susie,names = c("linear","lasso","susie"),ylab="")
+mtext("Prediction RMSE", side = 2, line = 2) # fixes the issue w. ylab and values overlapping
 
 
 # visualize results of cross-validation- Evaluate variable selection ability (inference)
@@ -503,10 +507,13 @@ legend(2,-0.6,legend=c("True value","Model estimated value boxplot"),col=c("blue
 
 # Visualize r-squared metrics
 # in sample
-vioplot(rsquared_vector_linear,rsquared_vector_lasso,rsquared_vector_susie,names = c("linear","lasso","susie"),ylab="R-squared values (in sample)")
-# out of sample
-vioplot(rsquared_vector_linear2,rsquared_vector_lasso2,rsquared_vector_susie2,names = c("linear","lasso","susie"),ylab="R-squared values (out of sample)")
+vioplot(rsquared_vector_linear,rsquared_vector_lasso,rsquared_vector_susie,names = c("linear","lasso","susie"),ylab="")
+mtext("R-squared values (in sample)", side = 2, line = 2) # fixes the issue w. ylab and values overlapping
 
+
+# out of sample
+vioplot(rsquared_vector_linear2,rsquared_vector_lasso2,rsquared_vector_susie2,names = c("linear","lasso","susie"),ylab="")
+mtext("R-squared values (out of sample)", side = 2, line = 2) # fixes the issue w. ylab and values overlapping
 
 
 # Visualize estimates
@@ -516,7 +523,8 @@ coef_table_lasso1=coef_table_lasso[,-1]
 coef_table_susie1=coef_table_susie[,-1]
 
 strong=which(abs(data1$beta)>0)
-vioplot(abs(as.vector(coef_table_linear1[,strong])),abs(as.vector(coef_table_lasso1[,strong])),abs(as.vector(coef_table_susie1[,strong])),abs(as.vector(coef_table_linear1[,-strong])),abs(as.vector(coef_table_lasso1[,-strong])),abs(as.vector(coef_table_susie1[,-strong])),ylab="Beta estimates",names=c("Strong\nlinear","Strong\nLASSO","Strong\nSuSiE","Weak\nlinear","Weak\nLASSO","Weak\nSuSiE"),main="Parameter Estimate Comparison",ylim=c(0,5))
+vioplot(abs(as.vector(coef_table_linear1[,strong])),abs(as.vector(coef_table_lasso1[,strong])),abs(as.vector(coef_table_susie1[,strong])),abs(as.vector(coef_table_linear1[,-strong])),abs(as.vector(coef_table_lasso1[,-strong])),abs(as.vector(coef_table_susie1[,-strong])),ylab="",names=c("Strong\nlinear","Strong\nLASSO","Strong\nSuSiE","Weak\nlinear","Weak\nLASSO","Weak\nSuSiE"),main="Parameter Estimate Comparison",ylim=c(0,5))
+mtext("Beta estimates", side = 2, line = 2) # fixes the issue w. ylab and values overlapping
 
 
 
