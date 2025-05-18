@@ -287,7 +287,6 @@ model_susie <- susie(data1$X, data1$y, L = 10)
 ```
 
 
-
 The main results from the summary function for SuSiE are a table of variables and a table of "credible sets". Within the variable table, all selected non-zero effects are listed along with the variable's inclusion probability and which credible set the variable belongs to. The credible sets summary includes a list of credible sets, and for each one a logged Bayes factor, an average $R^2$ value and a minimum $R^2$ value, as well as a list of which variables are in the credible set. When more than one variable is in a credible set, that means that the SuSiE suggests that these variables are correlated, and cannot determine which one should be included in the model.
 
 The coefficient function tells us about what the coefficient estimates are for our SuSiE model. Since we are using simulated data, we can compare these to the real beta values.
