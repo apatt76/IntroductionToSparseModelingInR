@@ -1,13 +1,13 @@
 # IntroductionToSparseModelingInR
 Welcome to the repository for sparse learning website
 
-Next Available Date: May 18, 2025
+Next Available Date: August 15, 2025
 
-Time: 9am-12pm
+Time: 8am-11am
 
-Venue: SFS annual meeting in San Juan, Puerto Rico
+Venue: Ecological Society of America (ESA) annual meeting in Baltimore, Maryland
 
-Cost: $50 with meeting registration, $25 for student, early career, and developing country members (fee imposed by SFS/ the conference venue, not Modelscapes or the presenters)
+Cost: $35 fee imposed by ESA, not Modelscapes or the presenters
 
 Unlock the power of ecological insights in the era of big data! Massive ecological datasets are being generated more frequently and inexpensively than ever before. However, datasets with far more predictors (P) than observations (N) pose serious challenges for traditional statistical methods, often resulting in overfitting, poor predictive performance, and inaccurate variable selection. Sparse modeling approaches that constrain the number of potential predictors in a model offer a potential way forward for the analysis of datasets with P>>N, and can lead to better out-of-sample prediction using distilled models that might better reflect the true processes affecting the response. Join our interactive workshop tailored for ecologists across all levels, where you'll delve into cutting-edge techniques using intuitive R packages to harness, analyze, and interpret big ecological datasets. This workshop will provide an introductory course on sparse modeling techniques followed by a live-coding lesson in R, where participants will create their own scripts for the SuSiE (susieR) and lasso (glmnet) approaches. Participants will walk away from this course with a firm understanding of several sparse modeling approaches and their usefulness, as well as methods for implementing, visualizing, and interpreting these modeling approaches in R.
 
